@@ -1,0 +1,97 @@
+# ==============================================================================
+# .gitignore - Projet R&D : Optimisation de Modèles Neuronaux à Oscillateurs Couplés
+# ==============================================================================
+
+# ------------------------------------------------------------------------------
+# Documentation des Agents IA & Fichiers Markdown
+# Conformément aux consignes : la documentation des agents (AGENT.md, CLAUDE.md, etc.)
+# ne doit pas être publiée sur GitHub. Seuls le code source et les rapports finaux
+# doivent y figurer.
+# ------------------------------------------------------------------------------
+*.md
+
+# Exception optionnelle si des rapports finaux sont rédigés en Markdown dans un dossier dédié :
+# !rapports/**/*.md
+# !reports/**/*.md
+
+# ------------------------------------------------------------------------------
+# Fichiers Système & OS
+# ------------------------------------------------------------------------------
+.DS_Store
+.DS_Store?
+._*
+.Spotlight-V100
+.Trashes
+ehthumbs.db
+Thumbs.db
+
+# ------------------------------------------------------------------------------
+# Python & Environnements Virtuels
+# ------------------------------------------------------------------------------
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+dist/
+downloads/
+eggs/
+.eggs/
+lib/
+lib64/
+parts/
+sdist/
+var/
+wheels/
+share/python-wheels/
+*.egg-info/
+.installed.cfg
+*.egg
+MANIFEST
+
+# Environnements virtuels
+venv/
+.venv/
+env/
+ENV/
+env.bak/
+venv.bak/
+
+# Jupyter Notebooks
+.ipynb_checkpoints
+*/.ipynb_checkpoints/*
+
+# ------------------------------------------------------------------------------
+# IDEs & Éditeurs de code
+# ------------------------------------------------------------------------------
+.idea/
+.vscode/
+*.swp
+*.swo
+*~
+*.sublime-project
+*.sublime-workspace
+
+# ------------------------------------------------------------------------------
+# Logs, Données volumineuses & Résultats temporaires de Benchmark
+# ------------------------------------------------------------------------------
+*.log
+runs/
+checkpoints/
+data/cache/
+*.tmp
+*.bak
+
+# ------------------------------------------------------------------------------
+# Caches outils IA / Agents locaux
+# ------------------------------------------------------------------------------
+.gemini/
+.claude/
+.cursor/
+
+# Caches de tests & qualité
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
