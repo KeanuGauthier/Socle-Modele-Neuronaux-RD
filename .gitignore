@@ -95,3 +95,31 @@ data/cache/
 .pytest_cache/
 .mypy_cache/
 .ruff_cache/
+
+# ------------------------------------------------------------------------------
+# LaTeX : on ne garde que les sources .tex et le PDF final
+# ------------------------------------------------------------------------------
+*.aux
+*.bbl
+*.bcf
+*.blg
+*.fdb_latexmk
+*.fls
+*.ilg
+*.ind
+*.lof
+*.lot
+*.nav
+*.nlo
+*.out
+*.snm
+*.synctex.gz
+*.toc
+*.vrb
+*.xdv
+*.synctex
+*.run.xml
+*.missfont
+_minted-*/
+*.mintedcmd
+*.mintedmd5
