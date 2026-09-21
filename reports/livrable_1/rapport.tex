@@ -160,79 +160,40 @@ figure~\ref{fig:carte}.
     \label{fig:carte}
 \end{figure}
 
-\clearpage
 \section{Lecture du schéma}
 
-\subsection{Le noyau : ce que l'on étudie}
+Au centre, l'objet d'étude est formulé sans jargon : \emph{un réseau de neurones
+biophysiques couplés, simulé fidèlement et calculé vite, jusqu'à grande échelle}.
+L'étiquette placée juste en dessous, \textbf{vitesse $\rightleftharpoons$ fidélité
+biophysique}, donne la clé de lecture de tout le reste : les deux termes ne se
+maximisent pas séparément, ils s'échangent l'un contre l'autre. C'est parce que cet
+arbitrage existe que le sujet se décline en quatre dimensions.
 
-Au centre du schéma figure l'objet d'étude, formulé sans jargon : \emph{un réseau de
-neurones biophysiques couplés, simulé fidèlement et calculé vite, jusqu'à grande
-échelle}. Ce noyau est volontairement descriptif et non interrogatif : il nomme ce
-que le projet manipule, pas ce qu'il cherche à trancher.
+\begin{description}[leftmargin=0pt, itemsep=5pt, topsep=6pt, font=\normalfont]
+    \item[\textbf{1. Modéliser --- \emph{quoi ?}}] Ce qu'il faut reproduire, du
+    neurone de Hodgkin-Huxley au connectome. Point clé : le critère de fidélité
+    n'est pas une courbe, c'est un \emph{régime} --- décharges, bouffées,
+    synchronisation.
 
-Juste en dessous, une étiquette rappelle l'axe de tension du sujet :
-\textbf{vitesse $\rightleftharpoons$ fidélité biophysique}. Les deux termes ne sont
-pas des objectifs indépendants que l'on pourrait maximiser séparément ; ils
-s'échangent l'un contre l'autre. Simplifier le modèle, agrandir le pas de temps ou
-descendre en précision numérique fait gagner du temps de calcul et perdre de la
-fidélité. Toute décision technique du projet se situe quelque part sur cet axe, et
-c'est parce que cet arbitrage existe que les quatre dimensions du schéma sont
-nécessaires.
+    \item[\textbf{2. Accélérer --- \emph{comment ?}}] Les stratégies de calcul à
+    confronter. Point clé : tout commence par une référence CPU exacte, sans
+    laquelle aucune accélération n'est vérifiable.
 
-\subsection{Les quatre dimensions}
+    \item[\textbf{3. Mesurer --- \emph{combien ?}}] Le gain, le passage à l'échelle
+    et la non-dérive. Point clé : ces trois indicateurs sont les critères
+    d'acceptation du projet, pas un bilan de fin de parcours.
 
-Autour du noyau, le sujet se décline en quatre dimensions, chacune répondant à une
-question différente.
+    \item[\textbf{4. Généraliser --- \emph{pour quoi ?}}] Le livrable visé est un
+    socle, pas un programme. Point clé : quatre briques interchangeables ---
+    neurone, synapse, connectome, solveur --- pour changer de modèle sans réécrire
+    le moteur de simulation.
+\end{description}
 
-\textbf{1. Modéliser --- \emph{quoi ?}} Cette dimension définit le substrat
-biophysique à reproduire. Elle descend du neurone isolé (Hodgkin-Huxley, 1952 :
-un état à quatre variables $(V,m,h,n)$, quatre équations différentielles raides
-couplées, un pas de temps contraint) à la synapse (modèle cinétique de Destexhe,
-1994, excitatrice ou inhibitrice), puis au connectome, c'est-à-dire au graphe des
-connexions, dont la structure de petit monde et la matrice creuse conditionnent tout
-le coût de calcul. Le dernier point est le plus important : ce que l'on doit
-préserver n'est pas une courbe, ce sont des \emph{régimes} --- potentiels d'action,
-bouffées, synchronisation. C'est la signature qualitative du réseau qui fait office
-de critère de fidélité.
-
-\textbf{2. Accélérer --- \emph{comment ?}} Cette dimension rassemble les stratégies
-de calcul à confronter. Elle commence par ce qui n'est pas du GPU : une référence
-CPU exacte, à pas adaptatif, qui sert de vérité terrain. Sans cette référence, aucune
-accélération n'est vérifiable. Viennent ensuite le portage GPU, plusieurs leviers
-d'optimisation (vectorisation, produit matrice creuse-vecteur, pas fixe, gestion de
-la mémoire vidéo) et, à nouveau, un compromis explicite : la précision numérique
-s'échange contre le débit.
-
-\textbf{3. Mesurer --- \emph{combien ?}} Cette dimension est la preuve
-expérimentale à produire, et elle porte les critères d'acceptation du projet. Trois
-familles d'indicateurs : le gain (l'accélération $S$ en fonction de la taille du
-réseau), le passage à l'échelle (coût par pas de temps, mémoire occupée, seuil de
-taille à partir duquel le GPU devient rentable), et la non-dérive (l'écart maximal
-entre trace GPU et trace CPU, mais aussi la conservation des dates de décharge).
-Le protocole de mesure figure explicitement dans le schéma, parce qu'une mesure non
-reproductible ne prouve rien.
-
-\textbf{4. Généraliser --- \emph{pour quoi ?}} Cette dimension définit le livrable
-final : non pas un programme qui tourne une fois, mais un socle réutilisable. Les
-quatre briques --- neurone, synapse, connectome, solveur --- doivent être
-interchangeables, de sorte que changer de modèle ou de topologie ne demande pas de
-réécrire le moteur de simulation. Elle inscrit enfin le projet dans ses débouchés :
-neurosciences computationnelles, bio-électronique, interfaces cerveau-machine.
-
-\subsection{L'anneau : une démarche itérative, pas linéaire}
-
-Les quatre dimensions sont reliées par une boucle orientée, et c'est le point le plus
-important de la lecture du schéma. Modéliser produit des équations, un graphe et un
-jeu de tests, qui alimentent l'accélération ; accélérer produit des exécutions
-comparées, CPU contre GPU, qui alimentent la mesure ; mesurer produit des temps et
-des traces de potentiel, qui alimentent la généralisation.
-
-La quatrième flèche, tracée en pointillés, ferme la boucle et revient sur la
-modélisation : changer de modèle de neurone, de topologie de réseau ou d'échelle
-relance le cycle complet. Elle est en pointillés parce qu'elle est facultative dans
-une itération donnée, mais elle est la raison d'être de la dimension
-\emph{généraliser} : si le socle est correctement découplé, ce retour coûte peu ;
-s'il ne l'est pas, il coûte une réécriture.
+Ces quatre dimensions sont reliées par un anneau orienté : chacune produit ce dont
+la suivante a besoin. La quatrième flèche, en pointillés, ferme la boucle et revient
+sur la modélisation. Elle signifie que le projet n'est pas linéaire : changer de
+modèle, de topologie ou d'échelle relance le cycle complet, et c'est précisément ce
+retour que la dimension \emph{généraliser} doit rendre peu coûteux.
 
 \section{Ce que le schéma met en évidence}
 
