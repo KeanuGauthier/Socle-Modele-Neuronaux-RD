@@ -34,20 +34,35 @@
 \definecolor{commentgray}{rgb}{0.45,0.45,0.45}
 
 % Palette du schéma conceptuel
-\definecolor{hubbg}{RGB}{20,45,75}
-\definecolor{hubborder}{RGB}{41,128,185}
-\definecolor{whyborder}{RGB}{41,128,185}
-\definecolor{whybg}{RGB}{240,246,252}
-\definecolor{whatborder}{RGB}{39,174,96}
-\definecolor{whatbg}{RGB}{240,249,244}
-\definecolor{howborder}{RGB}{211,84,0}
-\definecolor{howbg}{RGB}{253,248,242}
-\definecolor{outborder}{RGB}{142,68,173}
-\definecolor{outbg}{RGB}{248,243,252}
-\definecolor{defiborder}{RGB}{192,57,43}
-\definecolor{defibg}{RGB}{253,243,242}
-\definecolor{whoborder}{RGB}{52,73,94}
-\definecolor{whobg}{RGB}{245,247,250}
+\definecolor{hubbg}{RGB}{23,48,77}
+\definecolor{hubborder}{RGB}{23,48,77}
+\definecolor{hubrule}{RGB}{150,178,206}
+\definecolor{cardink}{RGB}{33,41,54}
+\definecolor{cardline}{RGB}{160,172,186}
+\definecolor{whyborder}{RGB}{31,92,139}
+\definecolor{whybg}{RGB}{243,248,252}
+\definecolor{whatborder}{RGB}{34,116,80}
+\definecolor{whatbg}{RGB}{243,250,246}
+\definecolor{howborder}{RGB}{181,84,39}
+\definecolor{howbg}{RGB}{253,247,243}
+\definecolor{outborder}{RGB}{104,72,140}
+\definecolor{outbg}{RGB}{249,246,253}
+\definecolor{defiborder}{RGB}{166,54,45}
+\definecolor{defibg}{RGB}{253,245,244}
+\definecolor{whoborder}{RGB}{71,85,105}
+\definecolor{whobg}{RGB}{246,248,250}
+
+% Outils de mise en forme des cartes du schéma conceptuel
+\newlist{cbul}{itemize}{1}
+\setlist[cbul]{leftmargin=3.4mm, labelsep=1.7mm, itemsep=2.6pt, topsep=0pt,
+               parsep=0pt, label=\textcolor{cardaccent}{\rule[0.55ex]{1.4mm}{0.6pt}}}
+\colorlet{cardaccent}{cardline}
+\newcommand{\cardsetup}[1]{%
+    \colorlet{cardaccent}{#1}\raggedright
+    \hyphenpenalty=10000\exhyphenpenalty=10000\relax}
+\newcommand{\cardtitle}[2]{%
+    {\bfseries\color{#1}#2}\\[2.5pt]
+    {\color{#1!35!white}\rule{\linewidth}{0.7pt}}\\[3.5pt]}
 
 \lstdefinelanguage{MicroAsm}{
     sensitive=true,
@@ -186,93 +201,115 @@ Le socle de code fourni repose sur le modèle de \textbf{Hodgkin-Huxley}. Il s'a
 \begin{figure}[p]
 \centering
 \begin{tikzpicture}[
-    >=Stealth,
+    >={Stealth[length=2.4mm,width=1.9mm]},
+    % --- bloc central : la problematique ---
     hub/.style={
-        rectangle, rounded corners=8pt, align=center,
-        fill=hubbg, draw=hubborder, line width=1.5pt,
-        text=white, inner sep=10pt, text width=10cm,
-        font=\small,
-        drop shadow={opacity=0.2, shadow xshift=2pt, shadow yshift=-2pt}
+        rectangle, rounded corners=5pt, align=center,
+        fill=hubbg, draw=hubbg, line width=1pt,
+        text=white, inner sep=0pt
     },
+    % --- carte d'axe ---
     card/.style={
-        rectangle, rounded corners=6pt, align=left,
-        line width=1.2pt, inner sep=7pt, text width=5.8cm,
-        font=\footnotesize,
-        drop shadow={opacity=0.1, shadow xshift=1.5pt, shadow yshift=-1.5pt}
+        rectangle, rounded corners=4pt, align=left,
+        line width=1pt, inner sep=8pt, font=\footnotesize,
+        text=cardink
     },
-    cardwhy/.style={card, draw=whyborder, fill=whybg},
-    cardwhat/.style={card, draw=whatborder, fill=whatbg},
-    cardhow/.style={card, draw=howborder, fill=howbg},
-    cardout/.style={card, draw=outborder, fill=outbg},
-    carddefi/.style={card, draw=defiborder, fill=defibg},
-    cardwho/.style={card, draw=whoborder, fill=whobg},
-    mainarrow/.style={->, line width=1.4pt, shorten >=3pt, shorten <=3pt}
+    % --- liaisons : un seul gris, la couleur reste aux cartes ---
+    link/.style={->, line width=0.9pt, draw=cardline, rounded corners=4pt},
+    flow/.style={->, line width=0.9pt, draw=cardline}
 ]
 
-% --- Hub central en haut ---
-\node[hub] (HUB) {
-    {\footnotesize \textbf{PROBLÉMATIQUE}}\\[0.3em]
-    {\large \textbf{SIMULATION GPU DE RÉSEAUX DE NEURONES}}\\[0.4em]
-    \rule{9.6cm}{0.4pt}\\[0.3em]
-    {\small Le GPU (RTX 5090) apporte-t-il un gain suffisant face au CPU ?}
-};
+% =====================================================================
+%  Geometrie : 2 colonnes x 3 lignes, tout aligne
+% =====================================================================
+\def\colL{-3.85}   \def\colR{3.85}
+\def\rowA{0}       \def\rowB{-3.6}    \def\rowC{-7.2}
+\def\cardw{6.55cm} \def\cardh{2.3cm}
 
-% --- Ligne 1 : POURQUOI + COMMENT ---
-\node[cardwhy, below left=1.2cm and 0.4cm of HUB.south, anchor=north east] (WHY) {
-    \textbf{\textcolor{whyborder}{POURQUOI ?}}\\[0.2em]
-    $\bullet$ Passer de plusieurs heures (CPU) à quelques minutes.\\
-    $\bullet$ Simuler de plus grands réseaux de neurones.\\
-    $\bullet$ Tester plus vite de nouvelles hypothèses.
-};
+% --- Bloc central ---------------------------------------------------
+\node[hub] (HUB) at (0,3.55) {%
+  \begin{minipage}{14.8cm}
+    \centering\vspace{9pt}
+    {\scriptsize\bfseries\color{hubrule}PROBLÉMATIQUE}\\[4pt]
+    {\large\bfseries SIMULATION GPU DE RÉSEAUX DE NEURONES}\\[5pt]
+    {\color{hubrule}\rule{13.6cm}{0.5pt}}\\[5pt]
+    {\small Le GPU (RTX~5090) apporte-t-il un gain suffisant face au CPU ?}
+    \vspace{9pt}
+  \end{minipage}};
 
-\node[cardhow, below right=1.2cm and 0.4cm of HUB.south, anchor=north west] (HOW) {
-    \textbf{\textcolor{howborder}{COMMENT ?}}\\[0.2em]
-    $\bullet$ Code de référence CPU fourni.\\
-    $\bullet$ Parallélisation sur GPU (RTX 5090).\\
-    $\bullet$ Benchmark CPU vs GPU.
-};
+% --- Ligne 1 : POURQUOI  |  COMMENT ----------------------------------
+\node[card, draw=whyborder, fill=whybg] (WHY) at (\colL,\rowA) {%
+  \begin{minipage}[t][\cardh][t]{\cardw}\cardsetup{whyborder}
+    \cardtitle{whyborder}{POURQUOI ?}
+    \begin{cbul}
+      \item Passer de plusieurs heures (CPU) à quelques minutes.
+      \item Simuler de plus grands réseaux de neurones.
+      \item Tester plus vite de nouvelles hypothèses.
+    \end{cbul}
+  \end{minipage}};
 
-% --- Ligne 2 : QUOI + ENJEUX ---
-\node[cardwhat, below=0.8cm of WHY] (WHAT) {
-    \textbf{\textcolor{whatborder}{QUOI ?}}\\[0.2em]
-    $\bullet$ Modèle Hodgkin-Huxley (ions Na$^+$/K$^+$).\\
-    $\bullet$ Synapses et connectome.\\
-    $\bullet$ Réseau de neurones couplés.
-};
+\node[card, draw=howborder, fill=howbg] (HOW) at (\colR,\rowA) {%
+  \begin{minipage}[t][\cardh][t]{\cardw}\cardsetup{howborder}
+    \cardtitle{howborder}{COMMENT ?}
+    \begin{cbul}
+      \item Code de référence CPU fourni.
+      \item Parallélisation sur GPU (RTX~5090).
+      \item Benchmark CPU vs GPU.
+    \end{cbul}
+  \end{minipage}};
 
-\node[cardout, below=0.8cm of HOW] (OUT) {
-    \textbf{\textcolor{outborder}{ENJEUX}}\\[0.2em]
-    $\bullet$ Courbe de speedup selon la taille du réseau.\\
-    $\bullet$ Seuil à partir duquel le GPU est utile.\\
-    $\bullet$ Réponse mesurée, pas prédéterminée.
-};
+% --- Ligne 2 : QUOI  |  ENJEUX ---------------------------------------
+\node[card, draw=whatborder, fill=whatbg] (WHAT) at (\colL,\rowB) {%
+  \begin{minipage}[t][\cardh][t]{\cardw}\cardsetup{whatborder}
+    \cardtitle{whatborder}{QUOI ?}
+    \begin{cbul}
+      \item Modèle Hodgkin-Huxley (ions Na$^{+}$/K$^{+}$).
+      \item Synapses et connectome.
+      \item Réseau de neurones couplés.
+    \end{cbul}
+  \end{minipage}};
 
-% --- Ligne 3 : QUI + CONTRAINTES ---
-\node[cardwho, below=0.8cm of WHAT] (WHO) {
-    \textbf{\textcolor{whoborder}{QUI ?}}\\[0.2em]
-    $\bullet$ Laboratoire de M.~Pirog (Junia).\\
-    $\bullet$ Chercheurs en neurosciences computationnelles.\\
-    $\bullet$ Étudiants du projet R\&D.
-};
+\node[card, draw=outborder, fill=outbg] (OUT) at (\colR,\rowB) {%
+  \begin{minipage}[t][\cardh][t]{\cardw}\cardsetup{outborder}
+    \cardtitle{outborder}{ENJEUX}
+    \begin{cbul}
+      \item Courbe de speedup selon la taille du réseau.
+      \item Seuil à partir duquel le GPU est utile.
+      \item Réponse mesurée, pas prédéterminée.
+    \end{cbul}
+  \end{minipage}};
 
-\node[carddefi, below=0.8cm of OUT] (DEFI) {
-    \textbf{\textcolor{defiborder}{CONTRAINTES}}\\[0.2em]
-    $\bullet$ Couplage synaptique irrégulier.\\
-    $\bullet$ Accès mémoire non uniforme.\\
-    $\bullet$ Part séquentielle inévitable.
-};
+% --- Ligne 3 : QUI  |  CONTRAINTES -----------------------------------
+\node[card, draw=whoborder, fill=whobg] (WHO) at (\colL,\rowC) {%
+  \begin{minipage}[t][\cardh][t]{\cardw}\cardsetup{whoborder}
+    \cardtitle{whoborder}{QUI ?}
+    \begin{cbul}
+      \item Laboratoire de M.~Pirog (Junia).
+      \item Chercheurs en neurosciences computationnelles.
+      \item Étudiants du projet R\&D.
+    \end{cbul}
+  \end{minipage}};
 
-% --- Flèches du hub vers les cartes ---
-\draw[mainarrow, draw=whyborder]  (HUB.south) ++(-0.3,0) -- (WHY.north east);
-\draw[mainarrow, draw=howborder]  (HUB.south) ++(0.3,0)  -- (HOW.north west);
+\node[card, draw=defiborder, fill=defibg] (DEFI) at (\colR,\rowC) {%
+  \begin{minipage}[t][\cardh][t]{\cardw}\cardsetup{defiborder}
+    \cardtitle{defiborder}{CONTRAINTES}
+    \begin{cbul}
+      \item Couplage synaptique irrégulier.
+      \item Accès mémoire non uniforme.
+      \item Part séquentielle inévitable.
+    \end{cbul}
+  \end{minipage}};
 
-% --- Flèches entre les lignes (colonne gauche) ---
-\draw[mainarrow, draw=whatborder] (WHY.south) -- (WHAT.north);
-\draw[mainarrow, draw=whoborder] (WHAT.south) -- (WHO.north);
+% =====================================================================
+%  Liaisons : une fourche depuis le bloc central, puis deux colonnes
+% =====================================================================
+\draw[link] (HUB.south) -- (0,2.05) -- (\colL,2.05) -- (WHY.north);
+\draw[link] (HUB.south) -- (0,2.05) -- (\colR,2.05) -- (HOW.north);
 
-% --- Flèches entre les lignes (colonne droite) ---
-\draw[mainarrow, draw=outborder]  (HOW.south) -- (OUT.north);
-\draw[mainarrow, draw=defiborder] (OUT.south) -- (DEFI.north);
+\draw[flow] (WHY.south)  -- (WHAT.north);
+\draw[flow] (WHAT.south) -- (WHO.north);
+\draw[flow] (HOW.south)  -- (OUT.north);
+\draw[flow] (OUT.south)  -- (DEFI.north);
 
 \end{tikzpicture}
 \caption{Carte conceptuelle du projet : qui, quoi, comment, pourquoi, enjeux et contraintes.}
