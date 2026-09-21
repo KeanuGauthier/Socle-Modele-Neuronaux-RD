@@ -1,0 +1,218 @@
+% =============================================================================
+%  LIVRABLE 1 - Reformulation du sujet sous forme de carte conceptuelle
+%  Projet de recherche 4A S7 - Optimisation de modeles neuronaux a oscillateurs couples
+%  Compilation : tectonic schema_epure.tex   (ou pdflatex / lualatex)
+% =============================================================================
+\documentclass[tikz,border=14pt,10pt]{standalone}
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage[french]{babel}
+\usepackage{lmodern}
+\usepackage{amsmath,amssymb}
+\usepackage{enumitem}
+\usepackage{tikz}
+\usetikzlibrary{arrows.meta,positioning,calc,fit,backgrounds}
+
+% --- PALETTE SOBRE : 1 encre + 4 accents desatures -------------------------
+\definecolor{cInk}    {RGB}{26, 32, 44}    % texte
+\definecolor{cNavy}   {RGB}{19, 49, 80}    % structure / centre
+\definecolor{cMute}   {RGB}{113, 124, 138} % texte secondaire
+\definecolor{cLine}   {RGB}{214, 221, 229} % filets & bordures
+\definecolor{cOne}    {RGB}{31, 92, 139}   % 1. Modeliser
+\definecolor{cTwo}    {RGB}{181, 84, 39}   % 2. Accelerer
+\definecolor{cThree}  {RGB}{34, 116, 80}   % 3. Mesurer
+\definecolor{cFour}   {RGB}{104, 72, 140}  % 4. Generaliser
+\definecolor{cSoft}   {RGB}{248, 250, 252} % fond tres clair
+
+\newcommand{\lead}[1]{\textbf{#1}}
+% Tirets et separateurs compatibles avec l'encodage EC (lmodern sans)
+\newcommand{\md}{\ \textendash\ }          % tiret de definition
+\newcommand{\sep}{\;\textperiodcentered\;} % separateur d'enumeration en ligne
+\newcommand{\tdash}{\;\textendash\;}       % tiret de titre
+
+% Puce sobre : tiret court colore
+\newlist{dims}{itemize}{1}
+\setlist[dims]{leftmargin=2.6mm,labelsep=1.6mm,itemsep=3.0pt,topsep=0pt,parsep=0pt,
+               label=\textcolor{cLine!40!cMute}{\rule[0.62ex]{1.5mm}{0.5pt}}}
+
+\begin{document}
+\begin{tikzpicture}[
+    font=\sffamily,
+    >={Stealth[length=2.6mm,width=2mm]},
+    % --- conteneur d'une dimension
+    dim/.style={
+        rectangle, rounded corners=4pt, fill=white, draw=cLine, line width=0.9pt,
+        inner sep=10pt, align=left, text=cInk
+    },
+    % --- pastille numerotee
+    tag/.style={
+        circle, draw=none, fill=#1, text=white, inner sep=0pt,
+        minimum size=6.4mm, font=\sffamily\bfseries\footnotesize,
+        draw=white, line width=1.1pt
+    },
+    % --- anneau d'iteration
+    ring/.style={
+        draw=cNavy!45, line width=0.9pt, rounded corners=9pt, ->
+    },
+    ringDash/.style={
+        draw=cNavy!45, line width=0.9pt, rounded corners=9pt, ->, dash pattern=on 2.4pt off 2.2pt
+    },
+    ringLab/.style={
+        font=\sffamily\fontsize{7.8}{9.4}\selectfont, text=cNavy!72, inner sep=0pt
+    }
+]
+
+% =========================================================================
+%  TITRE
+% =========================================================================
+\node (title) [align=center] at (0, 9.75) {
+    {\fontsize{15}{18}\selectfont\bfseries\color{cNavy}
+     Optimisation de modèles neuronaux à oscillateurs couplés}\\[3pt]
+    {\fontsize{9}{11}\selectfont\color{cMute}
+     \textsc{Livrable 1}\tdash Reformulation du sujet sous forme de carte conceptuelle}
+};
+
+% =========================================================================
+%  NOYAU : L'OBJET D'ÉTUDE  (pas de problématique dans le schéma)
+% =========================================================================
+\node (core) [
+    rectangle, rounded corners=5pt, fill=cNavy, draw=none,
+    minimum width=6.1cm, inner sep=11pt, align=center, text=white
+] at (0, 0.35) {
+    \begin{minipage}{5.2cm}
+        \centering
+        {\fontsize{7.5}{9}\selectfont\bfseries\color{cLine} OBJET D'ÉTUDE}\\[5pt]
+        {\fontsize{9.6}{12.6}\selectfont
+         Un réseau de \textbf{neurones biophysiques couplés},\\
+         simulé \textbf{fidèlement} et calculé \textbf{vite},\\
+         jusqu'à grande échelle}
+    \end{minipage}
+};
+
+% Tension structurante, juste sous le noyau
+\node (tension) [
+    rectangle, rounded corners=3pt, fill=cSoft, draw=cLine, line width=0.8pt,
+    inner xsep=8pt, inner ysep=5pt, align=center, anchor=north
+] at ([yshift=-5pt]core.south) {
+    {\fontsize{8.4}{10}\selectfont\color{cNavy}%
+     \textbf{Vitesse}\;\;$\rightleftharpoons$\;\;\textbf{Fidélité biophysique}}
+};
+
+% =========================================================================
+%  LES 4 DIMENSIONS
+% =========================================================================
+% ---------- 1. MODÉLISER (haut gauche) ----------
+\node (d1) [dim] at (-7.15, 4.53) {
+    \begin{minipage}[t][5.95cm][t]{5.75cm}
+        {\fontsize{12}{14}\selectfont\bfseries\color{cOne}MODÉLISER}%
+        \hfill{\fontsize{8}{9}\selectfont\color{cMute}\textsc{quoi ?}}\\[1.5pt]
+        {\fontsize{8}{9.5}\selectfont\color{cMute}Le substrat biophysique à reproduire}\\[4pt]
+        {\color{cOne}\rule{5.75cm}{1.1pt}}\\[6pt]
+        {\fontsize{8.2}{10.2}\selectfont\raggedright
+        \begin{dims}
+            \item \lead{Neurone}\md Hodgkin-Huxley (1952) : état $(V,m,h,n)$,
+                  4 EDO raides couplées, pas $dt \le 0,\!05$\,ms
+            \item \lead{Synapse}\md modèle cinétique (Destexhe, 1994) :
+                  $I_{\mathrm{syn}} = g\,s_{ij}(V-E)$, excitatrice ou inhibitrice
+            \item \lead{Connectome}\md graphe Watts-Strogatz (petit monde),
+                  matrice creuse $W$, $N : 10 \rightarrow 10^{4}$
+            \item \lead{Régimes}\md potentiels d'action, bouffées,
+                  synchronisation : la signature à préserver
+        \end{dims}}
+    \end{minipage}
+};
+
+% ---------- 2. ACCÉLÉRER (haut droite) ----------
+\node (d2) [dim] at (7.15, 4.53) {
+    \begin{minipage}[t][5.95cm][t]{5.75cm}
+        {\fontsize{12}{14}\selectfont\bfseries\color{cTwo}ACCÉLÉRER}%
+        \hfill{\fontsize{8}{9}\selectfont\color{cMute}\textsc{comment ?}}\\[1.5pt]
+        {\fontsize{8}{9.5}\selectfont\color{cMute}Les stratégies de calcul à confronter}\\[4pt]
+        {\color{cTwo}\rule{5.75cm}{1.1pt}}\\[6pt]
+        {\fontsize{8.2}{10.2}\selectfont\raggedright
+        \begin{dims}
+            \item \lead{Référence CPU}\md intégration exacte à pas adaptatif
+                  (SciPy \texttt{solve\_ivp}) : la vérité terrain
+            \item \lead{Portage GPU}\md parallélisme \textsc{simt}, un fil par
+                  neurone : PyTorch, CuPy, noyaux CUDA
+            \item \lead{Leviers}\md vectorisation, produit creux (SpMV),
+                  pas fixe, occupation et transferts VRAM
+            \item \lead{Compromis}\md précision numérique
+                  (\texttt{float32} / \texttt{float64}) contre débit
+        \end{dims}}
+    \end{minipage}
+};
+
+% ---------- 3. MESURER (bas droite) ----------
+\node (d3) [dim] at (7.15, -3.83) {
+    \begin{minipage}[t][5.95cm][t]{5.75cm}
+        {\fontsize{12}{14}\selectfont\bfseries\color{cThree}MESURER}%
+        \hfill{\fontsize{8}{9}\selectfont\color{cMute}\textsc{combien ?}}\\[1.5pt]
+        {\fontsize{8}{9.5}\selectfont\color{cMute}La preuve expérimentale à produire}\\[4pt]
+        {\color{cThree}\rule{5.75cm}{1.1pt}}\\[6pt]
+        {\fontsize{8.2}{10.2}\selectfont\raggedright
+        \begin{dims}
+            \item \lead{Gain}\md accélération
+                  $S = T_{\mathrm{CPU}}/T_{\mathrm{GPU}}$ en fonction de $N$
+            \item \lead{Passage à l'échelle}\md coût par pas $\Delta t$, mémoire
+                  occupée, seuil de bascule CPU\,$\rightarrow$\,GPU
+            \item \lead{Non-dérive}\md
+                  $\lVert V_{\mathrm{GPU}} - V_{\mathrm{CPU}} \rVert_\infty < \varepsilon$,
+                  dates de spikes et synchronisation préservées
+            \item \lead{Protocole}\md mêmes conditions initiales, exécutions
+                  répétées, matériel et versions documentés
+        \end{dims}}
+    \end{minipage}
+};
+
+% ---------- 4. GÉNÉRALISER (bas gauche) ----------
+\node (d4) [dim] at (-7.15, -3.83) {
+    \begin{minipage}[t][5.95cm][t]{5.75cm}
+        {\fontsize{12}{14}\selectfont\bfseries\color{cFour}GÉNÉRALISER}%
+        \hfill{\fontsize{8}{9}\selectfont\color{cMute}\textsc{pour quoi ?}}\\[1.5pt]
+        {\fontsize{8}{9.5}\selectfont\color{cMute}Le socle réutilisable à livrer}\\[4pt]
+        {\color{cFour}\rule{5.75cm}{1.1pt}}\\[6pt]
+        {\fontsize{8.2}{10.2}\selectfont\raggedright
+        \begin{dims}
+            \item \lead{Briques interchangeables}\md \textsf{[neurone]}
+                  \textsf{[synapse]} \textsf{[connectome]} \textsf{[solveur]}
+            \item \lead{Généricité}\md changer de modèle ou de topologie
+                  sans réécrire le moteur de simulation
+            \item \lead{Livraison}\md bibliothèque documentée, tests de
+                  non-régression, notebooks de démonstration
+            \item \lead{Débouchés}\md neurosciences computationnelles,
+                  bio-électronique, interfaces cerveau-machine
+        \end{dims}}
+    \end{minipage}
+};
+
+% ---------- pastilles numérotées ----------
+\node [tag=cOne]   at ([shift={(0mm,0mm)}]d1.north west) {1};
+\node [tag=cTwo]   at ([shift={(0mm,0mm)}]d2.north west) {2};
+\node [tag=cThree] at ([shift={(0mm,0mm)}]d3.north west) {3};
+\node [tag=cFour]  at ([shift={(0mm,0mm)}]d4.north west) {4};
+
+% =========================================================================
+%  ANNEAU D'ITÉRATION  1 -> 2 -> 3 -> 4 -> 1
+% =========================================================================
+\def\ringT{8.70}   % ordonnée du segment haut
+\def\ringB{-8.00}  % ordonnée du segment bas
+\def\ringR{11.15}  % abscisse du segment droit
+\def\ringL{-11.15} % abscisse du segment gauche
+
+\draw [ring] (d1.north) -- (-7.15,\ringT) -- (7.15,\ringT) -- (d2.north);
+\draw [ring] (d2.east)  -- (\ringR,4.53) -- (\ringR,-3.83) -- (d3.east);
+\draw [ring] (d3.south) -- (7.15,\ringB) -- (-7.15,\ringB) -- (d4.south);
+\draw [ringDash] (d4.west) -- (\ringL,-3.83) -- (\ringL,4.53) -- (d1.west);
+
+% Libelles de liaison : tous horizontaux, poses le long du trait,
+% a l'interieur de l'anneau, sans cartouche.
+\node [ringLab, anchor=north]                        at (     0,  8.50) {équations, graphe et jeu de tests};
+\node [ringLab, anchor=south]                        at (     0, -7.80) {temps mesurés et traces $V(t)$};
+\node [ringLab, anchor=east, align=right, text width=3.5cm]
+      at ( 10.90, 0.35) {exécutions comparées,\\ CPU contre GPU};
+\node [ringLab, anchor=west, align=left,  text width=3.5cm]
+      at (-10.90, 0.35) {itérer : autre modèle,\\ autre topologie};
+
+\end{tikzpicture}
+\end{document}

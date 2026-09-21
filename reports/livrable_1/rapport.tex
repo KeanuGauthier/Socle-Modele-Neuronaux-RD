@@ -19,6 +19,8 @@
 \hypersetup{hidelinks}
 \usepackage{tikz}
 \usepackage{longtable}
+\usepackage{array}
+\usepackage{float}
 
 
 
@@ -116,5 +118,509 @@
 \begin{document}
 \maketitle
 \tableofcontents
+
+\chapter{Reformulation du sujet}
+
+\section{Ce que demande le sujet}
+
+L'intitulé \emph{Optimisation de modèles neuronaux à oscillateurs couplés} réunit
+deux exigences qui tirent dans des directions opposées.
+
+D'un côté, une exigence de \textbf{fidélité biophysique}. Le neurone n'est pas ici
+une simple unité de calcul : il est décrit par le formalisme de Hodgkin-Huxley,
+c'est-à-dire par un système d'équations différentielles non linéaires qui reproduit
+le mécanisme physique réel du potentiel d'action. Chaque neurone se comporte comme
+un oscillateur, et ces oscillateurs sont \emph{couplés} entre eux par des synapses
+chimiques à conductance, elles-mêmes régies par leur propre dynamique.
+
+De l'autre, une exigence de \textbf{vitesse}. Le sujet ne se contente pas de deux
+ou trois neurones : il demande de monter en taille jusqu'à des réseaux de l'ordre de
+$10^4$ neurones. À cette échelle, l'intégration numérique naïve sur processeur
+devient hors de portée, et l'accélération matérielle (GPU) n'est plus une option de
+confort mais la condition de faisabilité de l'expérience.
+
+Reformulé en une phrase, le sujet revient donc à \textbf{construire un réseau de
+neurones biophysiques couplés, le simuler fidèlement, le calculer vite, et prouver
+que la vitesse gagnée ne s'est pas payée en fidélité perdue}. La difficulté n'est
+ni d'écrire un simulateur, ni d'écrire du code GPU : elle est de tenir les deux
+bouts en même temps, et de le démontrer par la mesure plutôt que de l'affirmer.
+
+C'est cette tension qui structure la carte conceptuelle présentée
+figure~\ref{fig:carte}.
+
+\clearpage
+\section{La carte conceptuelle}
+
+\begin{figure}[H]
+    \centering
+    \makebox[\textwidth][c]{\includegraphics[width=1.16\textwidth]{schema_epure}}
+    \caption{Reformulation du sujet sous forme de carte conceptuelle : un objet
+    d'étude central, quatre dimensions de travail, et une boucle d'itération qui
+    les relie.}
+    \label{fig:carte}
+\end{figure}
+
+\clearpage
+\section{Lecture du schéma}
+
+\subsection{Le noyau : ce que l'on étudie}
+
+Au centre du schéma figure l'objet d'étude, formulé sans jargon : \emph{un réseau de
+neurones biophysiques couplés, simulé fidèlement et calculé vite, jusqu'à grande
+échelle}. Ce noyau est volontairement descriptif et non interrogatif : il nomme ce
+que le projet manipule, pas ce qu'il cherche à trancher.
+
+Juste en dessous, une étiquette rappelle l'axe de tension du sujet :
+\textbf{vitesse $\rightleftharpoons$ fidélité biophysique}. Les deux termes ne sont
+pas des objectifs indépendants que l'on pourrait maximiser séparément ; ils
+s'échangent l'un contre l'autre. Simplifier le modèle, agrandir le pas de temps ou
+descendre en précision numérique fait gagner du temps de calcul et perdre de la
+fidélité. Toute décision technique du projet se situe quelque part sur cet axe, et
+c'est parce que cet arbitrage existe que les quatre dimensions du schéma sont
+nécessaires.
+
+\subsection{Les quatre dimensions}
+
+Autour du noyau, le sujet se décline en quatre dimensions, chacune répondant à une
+question différente.
+
+\textbf{1. Modéliser --- \emph{quoi ?}} Cette dimension définit le substrat
+biophysique à reproduire. Elle descend du neurone isolé (Hodgkin-Huxley, 1952 :
+un état à quatre variables $(V,m,h,n)$, quatre équations différentielles raides
+couplées, un pas de temps contraint) à la synapse (modèle cinétique de Destexhe,
+1994, excitatrice ou inhibitrice), puis au connectome, c'est-à-dire au graphe des
+connexions, dont la structure de petit monde et la matrice creuse conditionnent tout
+le coût de calcul. Le dernier point est le plus important : ce que l'on doit
+préserver n'est pas une courbe, ce sont des \emph{régimes} --- potentiels d'action,
+bouffées, synchronisation. C'est la signature qualitative du réseau qui fait office
+de critère de fidélité.
+
+\textbf{2. Accélérer --- \emph{comment ?}} Cette dimension rassemble les stratégies
+de calcul à confronter. Elle commence par ce qui n'est pas du GPU : une référence
+CPU exacte, à pas adaptatif, qui sert de vérité terrain. Sans cette référence, aucune
+accélération n'est vérifiable. Viennent ensuite le portage GPU, plusieurs leviers
+d'optimisation (vectorisation, produit matrice creuse-vecteur, pas fixe, gestion de
+la mémoire vidéo) et, à nouveau, un compromis explicite : la précision numérique
+s'échange contre le débit.
+
+\textbf{3. Mesurer --- \emph{combien ?}} Cette dimension est la preuve
+expérimentale à produire, et elle porte les critères d'acceptation du projet. Trois
+familles d'indicateurs : le gain (l'accélération $S$ en fonction de la taille du
+réseau), le passage à l'échelle (coût par pas de temps, mémoire occupée, seuil de
+taille à partir duquel le GPU devient rentable), et la non-dérive (l'écart maximal
+entre trace GPU et trace CPU, mais aussi la conservation des dates de décharge).
+Le protocole de mesure figure explicitement dans le schéma, parce qu'une mesure non
+reproductible ne prouve rien.
+
+\textbf{4. Généraliser --- \emph{pour quoi ?}} Cette dimension définit le livrable
+final : non pas un programme qui tourne une fois, mais un socle réutilisable. Les
+quatre briques --- neurone, synapse, connectome, solveur --- doivent être
+interchangeables, de sorte que changer de modèle ou de topologie ne demande pas de
+réécrire le moteur de simulation. Elle inscrit enfin le projet dans ses débouchés :
+neurosciences computationnelles, bio-électronique, interfaces cerveau-machine.
+
+\subsection{L'anneau : une démarche itérative, pas linéaire}
+
+Les quatre dimensions sont reliées par une boucle orientée, et c'est le point le plus
+important de la lecture du schéma. Modéliser produit des équations, un graphe et un
+jeu de tests, qui alimentent l'accélération ; accélérer produit des exécutions
+comparées, CPU contre GPU, qui alimentent la mesure ; mesurer produit des temps et
+des traces de potentiel, qui alimentent la généralisation.
+
+La quatrième flèche, tracée en pointillés, ferme la boucle et revient sur la
+modélisation : changer de modèle de neurone, de topologie de réseau ou d'échelle
+relance le cycle complet. Elle est en pointillés parce qu'elle est facultative dans
+une itération donnée, mais elle est la raison d'être de la dimension
+\emph{généraliser} : si le socle est correctement découplé, ce retour coûte peu ;
+s'il ne l'est pas, il coûte une réécriture.
+
+\section{Ce que le schéma met en évidence}
+
+Trois enseignements se dégagent de cette mise en forme.
+
+\textbf{Le verrou n'est pas le GPU, c'est l'arbitrage.} Porter un calcul sur carte
+graphique est un problème d'ingénierie connu. Le vrai verrou du sujet est de savoir
+\emph{jusqu'où} on peut simplifier le modèle, agrandir le pas de temps ou réduire la
+précision numérique avant que le réseau ne cesse de se comporter comme un réseau de
+neurones. Cette frontière ne se devine pas : elle se mesure.
+
+\textbf{La mesure est un livrable, pas un sous-produit.} Dans beaucoup de projets
+d'optimisation, le banc d'essai est bricolé à la fin. Ici il occupe un quart du
+schéma, au même rang que le modèle lui-même, parce qu'il est le seul moyen de
+démontrer que la contrainte de fidélité a été tenue. La référence CPU exacte est à
+ce titre un livrable critique, et non une étape préliminaire jetable.
+
+\textbf{La généricité conditionne la valeur du travail.} Un simulateur monolithique
+réglé pour Hodgkin-Huxley et Watts-Strogatz répondrait au sujet une fois, puis
+mourrait avec lui. Le découpage en briques interchangeables est ce qui transforme le
+projet en socle réutilisable, et c'est aussi ce qui rend la boucle d'itération
+abordable dans le temps imparti.
+
+\section{Les grandes phases du projet}
+
+Le projet se déroule sur deux semestres, pour un volume total de 132 heures :
+32 heures en semestre 7, consacrées au cadrage, à l'état de l'art et à l'analyse
+fonctionnelle, puis 100 heures en semestre 8, consacrées à la réalisation, à
+l'accélération GPU et aux campagnes de mesure. Le jalon qui sépare les deux est la
+disponibilité d'un étalon CPU validé : tant qu'il n'existe pas, aucune mesure
+d'accélération n'a de sens.
+
+Le tableau~\ref{tab:phases} récapitule ces phases et les relie aux dimensions du
+schéma.
+
+\begin{longtable}{@{}>{\raggedright\arraybackslash}p{0.050\textwidth}>{\raggedright\arraybackslash}p{0.210\textwidth}>{\raggedright\arraybackslash}p{0.115\textwidth}>{\raggedright\arraybackslash}p{0.335\textwidth}>{\raggedright\arraybackslash}p{0.180\textwidth}@{}}
+\caption{Grandes phases du projet et correspondance avec les dimensions du schéma.}
+\label{tab:phases}\\
+\hline
+\textbf{Ph.} & \textbf{Intitulé} & \textbf{Période} & \textbf{Contenu et livrables} & \textbf{Dimension} \\
+\hline
+\endfirsthead
+\hline
+\textbf{Ph.} & \textbf{Intitulé} & \textbf{Période} & \textbf{Contenu et livrables} & \textbf{Dimension} \\
+\hline
+\endhead
+\hline
+\endfoot
+1 & Cadrage et reformulation & S7 --- sept. &
+Reformulation du sujet et carte conceptuelle (L1), note de clarification :
+objectifs, périmètre, parties prenantes, risques (L2). &
+Cadrage général \\[4pt]
+2 & État de l'art et verrous & S7 --- oct. &
+Synthèse bibliographique comparative et identification des verrous techniques (L3). &
+Modéliser, Accélérer \\[4pt]
+3 & Analyse fonctionnelle & S7 --- oct. &
+Bête à cornes, pieuvre, hiérarchisation des fonctions (L4) ; décomposition FAST et
+schéma synoptique du système (L5). &
+Généraliser \\[4pt]
+4 & Étalon CPU et socle logiciel & S7 $\rightarrow$ S8 &
+Implémentation Hodgkin-Huxley avec couplage synaptique, générateurs de connectomes,
+solveur de référence exact et tests de validation biophysique. &
+Modéliser \\[4pt]
+5 & Accélération et portage GPU & S8 &
+Version vectorisée, portage tensoriel puis noyaux dédiés, propagation synaptique
+creuse, optimisation de la mémoire. &
+Accélérer \\[4pt]
+6 & Campagne de mesures & S8 &
+Banc d'essai reproductible, courbes d'accélération et de passage à l'échelle,
+contrôle de non-dérive par rapport à l'étalon CPU. &
+Mesurer \\[4pt]
+7 & Généralisation et livraison & S8 &
+Consolidation en bibliothèque modulaire documentée, tests de non-régression,
+notebooks de démonstration, soutenance finale. &
+Généraliser \\
+\end{longtable}
+
+Les phases 4 à 7 ne s'enchaînent pas strictement : elles suivent la boucle du
+schéma. Une campagne de mesure qui révèle une dérive renvoie à la modélisation ou au
+portage, et le cycle recommence sur une taille de réseau ou une topologie
+différente.
+
+\appendix
+
+\chapter{Glossaire : les termes du schéma en langage courant}
+
+Cette annexe reprend, dans l'ordre des quatre dimensions, chaque terme technique
+employé dans le schéma et dans le texte qui le commente. Les définitions y sont
+volontairement non spécialisées : elles visent à rendre la carte conceptuelle
+lisible par un lecteur qui n'est ni neuroscientifique ni spécialiste du calcul
+parallèle.
+
+\section{Modéliser : le neurone, la synapse, le réseau}
+
+\begin{longtable}{@{}>{\raggedright\arraybackslash}p{0.28\textwidth}>{\raggedright\arraybackslash}p{0.68\textwidth}@{}}
+\hline
+\textbf{Terme} & \textbf{En langage courant} \\
+\hline
+\endfirsthead
+\hline
+\textbf{Terme} & \textbf{En langage courant} \\
+\hline
+\endhead
+\hline
+\endfoot
+Neurone biophysique &
+Une description d'un neurone qui imite le fonctionnement physique réel de sa
+membrane (des ions qui entrent et sortent), et non une simple fonction
+mathématique d'entrée-sortie comme dans un réseau de neurones artificiel. \\[4pt]
+Oscillateur couplé &
+Un système qui produit spontanément un signal qui se répète, et dont le rythme est
+influencé par celui de ses voisins. Un neurone qui décharge régulièrement en est
+un ; des milliers de neurones connectés forment un ensemble d'oscillateurs
+couplés. \\[4pt]
+Potentiel de membrane &
+La tension électrique entre l'intérieur et l'extérieur du neurone, exprimée en
+millivolts. C'est la grandeur que l'on observe et que l'on trace au cours du
+temps : c'est le \og signal\fg{} du neurone. \\[4pt]
+Potentiel d'action (ou décharge, \emph{spike}) &
+La brusque impulsion de tension, très brève, par laquelle un neurone transmet une
+information. C'est l'événement élémentaire du langage neuronal. \\[4pt]
+Bouffée (\emph{burst}) &
+Une salve de plusieurs potentiels d'action rapprochés, suivie d'un silence. C'est
+un régime de fonctionnement courant et très sensible aux détails du modèle. \\[4pt]
+Synchronisation &
+Le fait que plusieurs neurones finissent par décharger ensemble, en rythme. C'est
+une propriété collective du réseau : elle n'existe pas au niveau d'un neurone
+isolé, et elle disparaît si la simulation est imprécise. \\[4pt]
+Modèle de Hodgkin-Huxley (1952) &
+Le modèle historique de référence du potentiel d'action, qui a valu le prix Nobel
+à ses auteurs. Il décrit le neurone par quatre grandeurs qui évoluent ensemble :
+la tension de membrane et trois \og vannes\fg{} ioniques. \\[4pt]
+Variables de porte &
+Les trois grandeurs, comprises entre 0 et 1, qui représentent la proportion de
+canaux ioniques ouverts. On peut les voir comme le degré d'ouverture de vannes qui
+laissent passer le courant. \\[4pt]
+Équation différentielle &
+Une équation qui ne donne pas directement la valeur d'une grandeur, mais sa
+\emph{vitesse de variation}. Pour connaître l'évolution, il faut la \og dérouler\fg{}
+pas à pas dans le temps. \\[4pt]
+Système raide (\emph{stiff}) &
+Un système où coexistent des phénomènes très rapides et très lents. Il oblige à
+avancer par très petits pas de temps, même pendant les périodes calmes, sous peine
+de résultats aberrants : c'est la principale source du coût de calcul. \\[4pt]
+Pas de temps &
+L'intervalle de temps dont on avance à chaque étape du calcul. Plus il est petit,
+plus la simulation est fidèle et plus elle est lente. \\[4pt]
+Synapse chimique &
+La connexion entre deux neurones : le neurone émetteur libère un messager
+chimique qui ouvre des canaux chez le neurone récepteur, ce qui y crée un
+courant. \\[4pt]
+Modèle cinétique (Destexhe, 1994) &
+Le modèle de synapse retenu dans le projet. Il ne se contente pas d'additionner
+une impulsion : il suit dans le temps la proportion de récepteurs activés, ce qui
+donne une réponse progressive et réaliste. \\[4pt]
+Synapse excitatrice / inhibitrice &
+Une synapse excitatrice rapproche le neurone récepteur du seuil de décharge ; une
+synapse inhibitrice l'en éloigne. L'équilibre entre les deux détermine le régime
+du réseau. \\[4pt]
+Conductance &
+La facilité avec laquelle le courant passe à travers la membrane. C'est l'inverse
+d'une résistance ; c'est elle que la synapse fait varier. \\[4pt]
+Connectome &
+La carte des connexions du réseau : qui est relié à qui, et avec quelle force. \\[4pt]
+Graphe &
+La représentation mathématique de cette carte : des points (les neurones) reliés
+par des flèches (les synapses). \\[4pt]
+Matrice d'adjacence &
+Le tableau de nombres qui code le graphe : la case en ligne $i$, colonne $j$ vaut
+zéro s'il n'y a pas de connexion, et la force du lien sinon. \\[4pt]
+Matrice creuse (\emph{sparse}) &
+Une matrice dont l'immense majorité des cases valent zéro, comme c'est le cas dans
+un cerveau. On ne stocke alors que les cases non nulles, ce qui économise
+énormément de mémoire et de calcul. \\[4pt]
+Réseau petit monde (Watts-Strogatz) &
+Un réseau très majoritairement composé de connexions locales, auxquelles s'ajoutent
+quelques raccourcis à longue distance. Ces quelques raccourcis suffisent à relier
+tout le réseau en très peu d'étapes : c'est l'effet \og six degrés de séparation\fg{},
+et c'est une structure observée dans les tissus nerveux réels. \\
+\end{longtable}
+
+\section{Accélérer : les termes du calcul}
+
+\begin{longtable}{@{}>{\raggedright\arraybackslash}p{0.28\textwidth}>{\raggedright\arraybackslash}p{0.68\textwidth}@{}}
+\hline
+\textbf{Terme} & \textbf{En langage courant} \\
+\hline
+\endfirsthead
+\hline
+\textbf{Terme} & \textbf{En langage courant} \\
+\hline
+\endhead
+\hline
+\endfoot
+CPU &
+Le processeur central de l'ordinateur. Peu d'unités de calcul, mais chacune très
+rapide et très polyvalente : idéal pour mener un calcul compliqué à la fois. \\[4pt]
+GPU &
+La carte graphique. Des milliers d'unités de calcul beaucoup plus simples, qui ne
+sont
+efficaces que s'ils font tous la même opération en même temps sur des données
+différentes. C'est exactement le cas d'un réseau où tous les neurones obéissent aux
+mêmes équations. \\[4pt]
+Intégration numérique &
+L'action de \og dérouler\fg{} les équations différentielles pas à pas pour obtenir
+l'évolution dans le temps. C'est là que se concentre l'essentiel du coût de calcul. \\[4pt]
+Solveur &
+Le programme qui réalise cette intégration. Le projet en compare plusieurs. \\[4pt]
+Pas adaptatif &
+Une stratégie où le solveur choisit lui-même la taille de chaque pas : petit quand
+le signal varie vite, grand quand il est calme. Très précis, mais difficile à
+paralléliser, car chaque neurone voudrait son propre rythme. \\[4pt]
+Pas fixe &
+La stratégie inverse : le même pas pour tout le monde, tout le temps. Moins fin,
+mais tous les neurones avancent ensemble, ce qui convient au GPU. \\[4pt]
+Vérité terrain (ou référence, étalon) &
+Le résultat considéré comme correct, produit par la méthode la plus sûre et la plus
+lente. Toutes les versions rapides sont comparées à lui. \\[4pt]
+Parallélisme SIMT &
+Le mode de fonctionnement du GPU : une même instruction exécutée simultanément par
+de nombreux fils de calcul, chacun sur ses propres données. Ici, typiquement un
+fil par neurone. \\[4pt]
+Fil (\emph{thread}) &
+La plus petite unité de calcul qui s'exécute indépendamment. Un GPU en fait tourner
+des dizaines de milliers à la fois. \\[4pt]
+Noyau CUDA (\emph{kernel}) &
+Un petit programme écrit spécifiquement pour s'exécuter sur la carte graphique.
+CUDA est la technologie de programmation des cartes NVIDIA. \\[4pt]
+PyTorch, CuPy &
+Deux bibliothèques Python qui permettent de faire calculer une carte graphique sans
+écrire soi-même de code CUDA, en manipulant directement des tableaux de
+nombres. \\[4pt]
+Vectorisation &
+Remplacer une boucle qui traite les neurones un par un par une seule opération
+appliquée à tout le tableau d'un coup. C'est le premier gain de performance, et il
+vaut déjà sur CPU. \\[4pt]
+Produit matrice creuse-vecteur (SpMV) &
+L'opération qui calcule, en une fois, le courant reçu par tous les neurones à
+partir de l'activité de leurs voisins. C'est l'opération la plus fréquente de la
+simulation, donc la première à optimiser. \\[4pt]
+VRAM &
+La mémoire embarquée sur la carte graphique. Elle est rapide mais limitée : c'est
+souvent elle qui fixe la taille maximale du réseau simulable. \\[4pt]
+Transferts mémoire &
+Les copies de données entre la mémoire de l'ordinateur et celle de la carte
+graphique. Elles sont lentes ; un portage naïf passe plus de temps à transférer
+qu'à calculer. \\[4pt]
+Occupation &
+La proportion de la capacité de calcul du GPU réellement utilisée. Une occupation
+faible signifie que la carte attend au lieu de travailler. \\[4pt]
+\textsf{float32} / \textsf{float64} &
+Deux façons de représenter un nombre à virgule : sur 32 bits (environ 7 chiffres
+significatifs) ou sur 64 bits (environ 16). La première est deux fois plus légère et
+nettement plus rapide sur GPU, mais accumule plus d'erreurs d'arrondi. \\[4pt]
+Débit &
+La quantité de calcul utile effectuée par seconde. C'est ce que l'on cherche à
+maximiser, et ce que l'on échange contre de la précision. \\
+\end{longtable}
+
+\section{Mesurer et généraliser : les termes de la preuve et du livrable}
+
+\begin{longtable}{@{}>{\raggedright\arraybackslash}p{0.28\textwidth}>{\raggedright\arraybackslash}p{0.68\textwidth}@{}}
+\hline
+\textbf{Terme} & \textbf{En langage courant} \\
+\hline
+\endfirsthead
+\hline
+\textbf{Terme} & \textbf{En langage courant} \\
+\hline
+\endhead
+\hline
+\endfoot
+Accélération (\emph{speedup}) &
+Le rapport entre le temps mis par le CPU et celui mis par le GPU pour le même
+calcul. Une accélération de 20 signifie vingt fois plus rapide. \\[4pt]
+Passage à l'échelle (scalabilité) &
+La façon dont le temps de calcul et la mémoire augmentent quand le réseau grandit.
+Un bon passage à l'échelle, ce n'est pas seulement être rapide sur un petit
+réseau : c'est ne pas s'effondrer sur un grand. \\[4pt]
+Seuil de bascule &
+La taille de réseau à partir de laquelle le GPU devient plus rentable que le CPU.
+En dessous, les coûts de transfert et de lancement dominent et le GPU peut être
+plus lent. \\[4pt]
+Non-dérive &
+Le fait que la version accélérée donne le même résultat que la référence. On la
+contrôle de deux façons : l'écart maximal entre les deux courbes de tension, et la
+conservation des instants de décharge. \\[4pt]
+Écart maximal (norme infinie) &
+Le plus grand écart observé entre deux courbes sur toute la durée de la simulation.
+C'est un critère sévère : il suffit d'un seul instant de désaccord pour le faire
+grimper. \\[4pt]
+Tolérance &
+Le seuil d'écart en dessous duquel deux résultats sont déclarés équivalents. Il doit
+être fixé avant les mesures, pas après. \\[4pt]
+Conditions initiales &
+L'état du réseau au début de la simulation. Deux simulations ne sont comparables que
+si elles partent exactement du même état. \\[4pt]
+Reproductibilité &
+La garantie qu'une même expérience, relancée, redonne le même résultat. Elle impose
+de fixer les tirages aléatoires et de consigner le matériel et les versions de
+logiciels utilisés. \\[4pt]
+Protocole de mesure &
+L'ensemble des règles fixées à l'avance : durée simulée, tailles testées, nombre de
+répétitions, ce que l'on chronomètre exactement. Sans lui, deux mesures ne se
+comparent pas. \\[4pt]
+Architecture modulaire &
+Un logiciel découpé en briques indépendantes qui s'emboîtent par des interfaces
+stables. Ici : le neurone, la synapse, le connectome et le solveur. \\[4pt]
+Moteur de simulation &
+La partie du code qui fait avancer le temps. L'objectif de modularité est de pouvoir
+changer de modèle de neurone ou de topologie sans jamais y toucher. \\[4pt]
+Test de non-régression &
+Un test automatique qui vérifie qu'une modification du code n'a pas cassé un
+comportement qui fonctionnait auparavant. C'est le filet de sécurité d'un socle
+destiné à être réutilisé. \\[4pt]
+Notebook &
+Un document exécutable mêlant code, courbes et explications, qui permet de rejouer
+une démonstration sans avoir à lire tout le code source. \\[4pt]
+Neurosciences computationnelles &
+La discipline qui étudie le cerveau en le simulant, pour tester des hypothèses que
+l'expérience biologique ne permet pas d'isoler. \\[4pt]
+Bio-électronique &
+La conception de circuits électroniques qui dialoguent avec du vivant, voire qui en
+imitent le fonctionnement. \\[4pt]
+Interface cerveau-machine &
+Un dispositif qui lit l'activité neuronale et la traduit en commande. Ces systèmes
+doivent souvent simuler ou décoder en temps réel, d'où leur intérêt direct pour un
+travail d'accélération. \\
+\end{longtable}
+
+\chapter{Notations mathématiques employées dans le schéma}
+
+\begin{longtable}{@{}>{\raggedright\arraybackslash}p{0.20\textwidth}>{\raggedright\arraybackslash}p{0.30\textwidth}>{\raggedright\arraybackslash}p{0.44\textwidth}@{}}
+\hline
+\textbf{Notation} & \textbf{Se lit} & \textbf{Signification} \\
+\hline
+\endfirsthead
+\hline
+\textbf{Notation} & \textbf{Se lit} & \textbf{Signification} \\
+\hline
+\endhead
+\hline
+\endfoot
+$V$ & Tension de membrane &
+Le signal électrique du neurone, en millivolts. C'est la grandeur observée. \\[4pt]
+$(V,m,h,n)$ & État d'un neurone &
+Les quatre nombres qui décrivent entièrement un neurone à un instant donné : sa
+tension et ses trois variables de porte. \\[4pt]
+$V(t)$ & Tension au cours du temps &
+La courbe de tension sur toute la durée de la simulation : la \og trace\fg{} que l'on
+compare entre CPU et GPU. \\[4pt]
+$dt \le 0{,}05$\,ms & Pas de temps &
+Le pas d'intégration doit rester inférieur à cinq centièmes de milliseconde pour que
+le calcul reste stable. \\[4pt]
+$\Delta t$ & Pas de simulation &
+Le même pas, vu du côté du coût : on mesure le temps de calcul dépensé par pas. \\[4pt]
+$I_{\mathrm{syn}}$ & Courant synaptique &
+Le courant qu'un neurone reçoit de tous ceux qui lui sont connectés. \\[4pt]
+$g$ & Conductance synaptique &
+La force de la connexion : elle règle l'amplitude du courant transmis. \\[4pt]
+$s_{ij}$ & Variable synaptique &
+La proportion de récepteurs activés sur la connexion allant du neurone $j$ vers le
+neurone $i$ ; elle vaut entre 0 et 1. \\[4pt]
+$E$ & Potentiel de réversion &
+La tension vers laquelle la synapse tire le neurone. Elle décide du caractère
+excitateur ou inhibiteur de la connexion. \\[4pt]
+$W$ & Matrice de connectivité &
+Le tableau des poids de connexion du réseau ; il est creux, c'est-à-dire presque
+entièrement nul. \\[4pt]
+$N$ & Taille du réseau &
+Le nombre de neurones simulés. \\[4pt]
+$N : 10 \rightarrow 10^{4}$ & Plage de tailles &
+Le projet balaie des réseaux de dix neurones jusqu'à dix mille, pour observer
+l'évolution des performances. \\[4pt]
+$T_{\mathrm{CPU}}$, $T_{\mathrm{GPU}}$ & Temps d'exécution &
+La durée mesurée d'une même simulation sur processeur et sur carte
+graphique. \\[4pt]
+$S = T_{\mathrm{CPU}} / T_{\mathrm{GPU}}$ & Facteur d'accélération &
+Combien de fois le GPU va plus vite que le CPU pour un calcul identique. \\[4pt]
+$\lVert V_{\mathrm{GPU}} - V_{\mathrm{CPU}} \rVert_\infty$ & Écart maximal &
+Le plus grand écart de tension observé entre les deux versions sur l'ensemble de la
+simulation. \\[4pt]
+$\varepsilon$ & Tolérance &
+Le seuil d'écart accepté, fixé à l'avance, en dessous duquel les deux résultats sont
+jugés équivalents. \\[4pt]
+$\rightleftharpoons$ & Compromis &
+Les deux flèches opposées signalent un arbitrage : gagner sur un terme se paie sur
+l'autre. \\
+\end{longtable}
 
 \end{document}
